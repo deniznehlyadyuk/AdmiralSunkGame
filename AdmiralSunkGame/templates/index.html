@@ -1,0 +1,65 @@
+﻿<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Katılım Bekleniyor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.4/socket.io.js" integrity="sha512-aMGMvNYu8Ue4G+fHa359jcPb1u+ytAF+P2SCb+PxrjCdO3n3ZTxJ30zuH39rimUggmTwmh2u7wvQsDTHESnmfQ==" crossorigin="anonymous"></script>
+    <script type="text/javascript" charset="utf-8">
+        $(document).ready(function () {
+            var socket = io();
+
+            socket.on("invite-accepted", (playerId) => {
+                $.ajax({
+                    type: "POST",
+                    url: "/set_opponent",
+                    data: { opponentId: playerId },
+                    success: function () {
+                        window.location.href = `${window.location.origin}/match`
+                    }
+                })
+            })
+        })
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            gap: 128px;
+        }
+
+        button {
+            cursor: pointer;
+            padding: 0.375rem 0.75rem;
+            color: #fff;
+            border: 1px solid #0d6efd;
+            border-radius: 0.375rem;
+            background-color: #0d6efd;
+            transition: color .15s ease-in-out,background-color .15s ease-in-out,border-color .15s ease-in-out,box-shadow .15s ease-in-out;
+            font-size: 1rem;
+        }
+
+        button:hover {
+            border-color: #0a58ca;
+            background-color: #0a58ca;
+        }
+    </style>
+</head>
+<body>
+	<div class="container">
+        <button onclick="navigator.clipboard.writeText(`${window.location.origin}/invite/{{ id }}`)">Davet Linkini Kopyala</button>
+	</div>
+</body>
+</html>

@@ -1,0 +1,283 @@
+﻿<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Oyun</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.4/socket.io.js" integrity="sha512-aMGMvNYu8Ue4G+fHa359jcPb1u+ytAF+P2SCb+PxrjCdO3n3ZTxJ30zuH39rimUggmTwmh2u7wvQsDTHESnmfQ==" crossorigin="anonymous"></script>
+    <script type="text/javascript" charset="utf-8">
+        $(document).ready(function () {
+            let selectedCell, selectedIndex
+            const fireButton = $("input#fire")
+
+            function setFireButtonAsDisabled() {
+                fireButton.attr("disabled", true)
+                fireButton.attr("title", "Atış yapmak için hedef seçiniz.")
+            }
+
+            function setFireButtonAsActive() {
+                fireButton.attr("disabled", false)
+                fireButton.attr("title", "")
+            }
+
+            setFireButtonAsDisabled()
+
+			$(".board").each(function () {
+                for (let i = 0; i < 144; i++) {
+                    $(this).append("<div class='cell'></div>")
+                }
+			})
+
+            const myMap = {{ data }}
+            $("#player1.board .cell").each(function (index) {
+                let cellValue = myMap[Math.floor(index / 12)][index % 12]
+                
+                if (cellValue == 0) {
+                    $(this).addClass("empty")
+                } else {
+                    $(this).addClass("full")
+                }
+            })
+
+            $("#player2.board").on("mouseup", ".cell:not(.empty):not(.full)", function () {
+				console.log(`Clicked index: ${$(this).index()}`)
+
+                $("#player2.board .cell.selected").removeClass("selected")
+
+				$(this).toggleClass("selected")
+
+                selectedCell = $(this)
+                selectedIndex = $(this).index()
+
+                setFireButtonAsActive()
+            })
+
+            $("#fireForm").on("submit", function (e) {
+                e.preventDefault()
+
+                setFireButtonAsDisabled()
+
+                let position = [Math.floor(selectedIndex / 12), selectedIndex % 12]
+                
+                $.ajax({
+                    type: "POST",
+                    url: "/match",
+                    data: { position: position },
+                    success: function (isHit) {
+                        selectedCell.removeClass("selected")
+
+                        console.log(`Fired to: (${Math.floor(selectedIndex / 12)}, ${selectedIndex % 12})`)
+
+                        if (isHit) {
+                            selectedCell.addClass("full")
+                        } else {
+                            selectedCell.addClass("empty")
+                        }
+                    }
+                })
+            })
+
+            $("#readyForm").on("submit", function (e) {
+                e.preventDefault()
+
+                $.ajax({
+                    type: "POST",
+                    url: "/ready",
+                    data: null,
+                    success: function () {
+                        console.log("ready")
+                    }
+                })
+            })
+
+            let inOpponentMap = true
+
+            $("button#mapChanger").on("click", function () {
+                if (inOpponentMap) {
+                    $(this).text("Düşman Haritasını Gör")
+                    $(".board#player1").css("display", "")
+                    $(".board#player2").css("display", "none")
+                    $("input#fire").css("display", "none")
+                } else {
+                    $(this).text("Kendi Haritamı Gör")
+                    $(".board#player1").css("display", "none")
+                    $(".board#player2").css("display", "")
+                    $("input#fire").css("display", "")
+                }
+                inOpponentMap = !inOpponentMap;
+            })
+
+            $(window).on("resize", function () {
+                const width = $(this).width()
+
+                if (width > 992) {
+                    $("input#fire").css("display", "")
+
+                    if (inOpponentMap) {
+                        $(".board#player1").css("display", "")
+                    } else {
+                        $(".board#player2").css("display", "")
+                    }
+
+                    return
+                }
+
+                if (inOpponentMap) {
+                    $(".board#player1").css("display", "none")
+                } else {
+                    $("input#fire").css("display", "none")
+                    $(".board#player2").css("display", "none")
+                }
+            })
+
+            const width = $(window).width()
+
+            if (width > 992) {
+                if (inOpponentMap) {
+                    $(".board#player1").css("display", "")
+                } else {
+                    $(".board#player2").css("display", "")
+                }
+
+                return
+            }
+
+            if (inOpponentMap) {
+                $(".board#player1").css("display", "none")
+            } else {
+                $(".board#player2").css("display", "none")
+            }
+
+            var socket = io();
+            
+            socket.on("fired", function (position) {
+                const cell = $(`.board#player1 .cell:nth-child(${position[0] * 12 + position[1] + 1})`)
+                console.log(cell)
+                cell.addClass("fired")
+            })
+		})
+    </script>
+	<style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+		.container {
+			display: flex;
+			justify-content: space-around;
+			align-items: center;
+            gap: 5vw;
+		}
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            width: 35vw;
+            padding: 8px;
+            border: 2px solid darkgray;
+            border-radius: 8px;
+        }
+		
+		.board .cell {
+			background-color: lightgray;
+			aspect-ratio: 1;
+            border: 1px solid white;
+		}
+
+        .board .cell.empty {
+            background-color: whitesmoke;
+        }
+		
+		.board .cell.full {
+            background-color: dimgray;
+        }
+
+        .board .cell.selected {
+            background-color: #dc3545;
+            opacity: 0.5;
+        }
+
+        .board .cell.empty.fired {
+            background-color: lightsalmon;
+        }
+
+        .board .cell.full.fired {
+            background-color: crimson;
+        }
+
+        input:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        input, button {
+            cursor: pointer;
+            padding: 0.375rem 0.75rem;
+            color: #fff;
+            border-radius: 0.375rem;
+            transition: color .15s ease-in-out,background-color .15s ease-in-out,border-color .15s ease-in-out,box-shadow .15s ease-in-out;
+            font-size: 1rem;
+        }
+
+        .btn-danger {
+            border: 1px solid #dc3545;
+            background-color: #dc3545;
+        }
+
+        .btn-primary {
+            border: 1px solid #0d6efd;
+            background-color: #0d6efd;
+        }
+
+        button#mapChanger {
+            display: none;
+        }
+
+        @media only screen and (max-width: 992px) {
+            body {
+                margin-top: 32px;
+                align-items: start;
+                overflow: hidden;
+            }
+
+            .container {
+                flex-direction: column-reverse;
+                gap: 16px;
+            }
+
+            .board {
+                width: 90vw !important;
+                max-width: 75vh;
+            }
+
+            form, input {
+                width: 100%;
+            }
+
+            button#mapChanger {
+                align-self: start;
+                display: block;
+            }
+        }
+	</style>
+</head>
+<body>
+	<div class="container">
+		<div id="player1" class="board">
+		</div>
+        <form id="fireForm" method="POST">
+            <input class="btn-danger" id="fire" type="submit" value="Ateş Et">
+        </form>
+		<div id="player2" class="board">
+		</div>
+        <button class="btn-primary" id="mapChanger">Kendi Haritamı Gör</button>
+	</div>
+</body>
+</html>
